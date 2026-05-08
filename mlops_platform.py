@@ -34,8 +34,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker, Session, relationship
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 
 # Pydantic models
-from pydantic import BaseModel, EmailStr, Field, validator
-from pydantic.config import ConfigDict
+from pydantic import BaseModel, EmailStr, Field
+from pydantic import ConfigDict
 
 # ML and monitoring imports
 from scipy import stats
@@ -449,13 +449,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # Pydantic Models
 class UserCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     full_name: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=8)
     organization: Optional[str] = None
-    
-    model_config = ConfigDict(str_strip_whitespace=True)
 
 class UserLogin(BaseModel):
     username: str
