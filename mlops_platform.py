@@ -734,8 +734,375 @@ async def root():
         }
     }
 
-# Continue with all the API endpoints...
-# [The rest of the comprehensive API implementation would continue here]
+# User Management API
+@app.post("/api/users/register")
+async def register_user(user: UserCreate, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(
+        (User.username == user.username) | (User.email == user.email)
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    hashed_pw = hash_password(user.password)
+    api_key = generate_api_key()
+    
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=hashed_pw,
+        api_key=api_key,
+        organization=user.organization
+    )
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    access_token = create_access_token(data={"sub": str(db_user.id)})
+    
+    return {
+        "message": "User registered successfully",
+        "user_id": db_user.id,
+        "api_key": api_key,
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
+@app.post("/api/users/login")
+async def login_user(user: UserLogin, db: Session = Depends(get_db)):
+    db_user = db.query(User).filter(User.username == user.username).first()
+    if not db_user or db_user.hashed_password != hash_password(user.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    db_user.last_login = datetime.utcnow()
+    db.commit()
+    
+    access_token = create_access_token(data={"sub": str(db_user.id)})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "api_key": db_user.api_key,
+        "user_info": {
+            "id": db_user.id,
+            "username": db_user.username,
+            "full_name": db_user.full_name,
+            "organization": db_user.organization
+        }
+    }
+
+# Model Management API
+@app.post("/api/models/register")
+async def register_model(
+    model: ModelRegister, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    existing = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id, 
+        MLModel.model_name == model.model_name
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Model already registered")
+    
+    db_model = MLModel(
+        user_id=current_user.id,
+        model_name=model.model_name,
+        model_type=model.model_type,
+        framework=model.framework,
+        deployment_platform=model.deployment_platform,
+        description=model.description,
+        tags=model.tags,
+        input_schema=model.input_schema,
+        output_schema=model.output_schema
+    )
+    db.add(db_model)
+    db.commit()
+    db.refresh(db_model)
+    
+    return {
+        "message": "Model registered successfully",
+        "model_id": db_model.id,
+        "model_name": db_model.model_name
+    }
+
+@app.post("/api/models/{model_name}/upload")
+async def upload_model_file(
+    model_name: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id,
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    os.makedirs("models", exist_ok=True)
+    file_path = f"models/{model.id}_{file.filename}"
+    
+    with open(file_path, "wb") as buffer:
+        content = await file.read()
+        buffer.write(content)
+    
+    model.is_deployed = True
+    model.updated_at = datetime.utcnow()
+    db.commit()
+    
+    return {
+        "message": "Model uploaded successfully",
+        "file_path": file_path,
+        "file_size": len(content)
+    }
+
+@app.delete("/api/models/{model_name}")
+async def delete_model(
+    model_name: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id,
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    model.is_active = False
+    db.commit()
+    
+    return {"message": f"Model {model_name} deleted successfully"}
+
+@app.post("/api/models/{model_name}/predictions")
+async def log_predictions(
+    model_name: str, 
+    data: PredictionData, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id, 
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    for i, (pred, features) in enumerate(zip(data.predictions, data.features)):
+        actual = data.actuals[i] if data.actuals and i < len(data.actuals) else None
+        
+        prediction_log = PredictionLog(
+            model_id=model.id,
+            prediction_id=str(uuid.uuid4()),
+            input_features=features,
+            prediction=pred,
+            actual=actual,
+            model_version=model.model_version,
+            environment="production"
+        )
+        db.add(prediction_log)
+    
+    model.last_prediction = datetime.utcnow()
+    model.total_predictions += len(data.predictions)
+    db.commit()
+    
+    if PROMETHEUS_AVAILABLE:
+        prediction_counter.labels(model_name=model_name, user_id=current_user.id).inc(len(data.predictions))
+    
+    return {"message": f"Logged {len(data.predictions)} predictions"}
+
+@app.get("/api/models/{model_name}/metrics")
+async def get_model_metrics(
+    model_name: str, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id, 
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    recent_preds = db.query(PredictionLog).filter(
+        PredictionLog.model_id == model.id,
+        PredictionLog.actual.isnot(None),
+        PredictionLog.timestamp >= datetime.utcnow() - timedelta(days=7)
+    ).all()
+    
+    if len(recent_preds) < 5:
+        return {"message": "Insufficient data for metrics calculation"}
+    
+    y_true = [p.actual for p in recent_preds]
+    y_pred = [p.prediction for p in recent_preds]
+    
+    metrics = calculate_advanced_metrics(y_true, y_pred, model.model_type)
+    
+    metric_record = ModelMetrics(
+        model_id=model.id,
+        accuracy=metrics.get("accuracy"),
+        precision=metrics.get("precision"),
+        recall=metrics.get("recall"),
+        f1_score=metrics.get("f1_score"),
+        auc_score=metrics.get("auc_score"),
+        mse=metrics.get("mse"),
+        mae=metrics.get("mae"),
+        rmse=metrics.get("rmse"),
+        r2_score=metrics.get("r2_score"),
+        custom_metrics=metrics
+    )
+    db.add(metric_record)
+    db.commit()
+    
+    if PROMETHEUS_AVAILABLE and "accuracy" in metrics:
+        accuracy_gauge.labels(model_name=model_name, user_id=current_user.id).set(metrics["accuracy"])
+    
+    return metrics
+
+@app.get("/api/models/{model_name}/drift")
+async def check_drift(
+    model_name: str, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id, 
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    now = datetime.utcnow()
+    recent_start = now - timedelta(days=7)
+    previous_start = now - timedelta(days=14)
+    
+    recent_preds = db.query(PredictionLog).filter(
+        PredictionLog.model_id == model.id,
+        PredictionLog.timestamp >= recent_start
+    ).all()
+    
+    previous_preds = db.query(PredictionLog).filter(
+        PredictionLog.model_id == model.id,
+        PredictionLog.timestamp >= previous_start,
+        PredictionLog.timestamp < recent_start
+    ).all()
+    
+    if len(recent_preds) < 10 or len(previous_preds) < 10:
+        return {"message": "Insufficient data for drift detection"}
+    
+    recent_values = np.array([p.prediction for p in recent_preds])
+    previous_values = np.array([p.prediction for p in previous_preds])
+    
+    drift_result = detect_advanced_drift(previous_values, recent_values)
+    
+    drift_record = DriftDetection(
+        model_id=model.id,
+        drift_detected=drift_result.get("drift_detected", False),
+        drift_score=drift_result.get("drift_score", 0.0),
+        drift_severity=drift_result.get("severity", "low"),
+        statistical_test="kolmogorov_smirnov",
+        p_value=drift_result.get("tests", {}).get("kolmogorov_smirnov", {}).get("p_value", 1.0)
+    )
+    db.add(drift_record)
+    db.commit()
+    
+    if PROMETHEUS_AVAILABLE:
+        drift_gauge.labels(model_name=model_name, user_id=current_user.id).set(drift_result.get("drift_score", 0.0))
+    
+    return drift_result
+
+@app.get("/api/user/models")
+async def get_user_models(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    models = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id,
+        MLModel.is_active == True
+    ).all()
+    
+    return [
+        {
+            "id": m.id,
+            "name": m.model_name,
+            "type": m.model_type,
+            "framework": m.framework,
+            "platform": m.deployment_platform,
+            "created_at": m.created_at,
+            "total_predictions": m.total_predictions,
+            "last_prediction": m.last_prediction,
+            "is_deployed": m.is_deployed,
+            "health_status": m.health_status
+        } for m in models
+    ]
+
+@app.get("/api/dashboard/{model_name}")
+async def get_dashboard_data(
+    model_name: str, 
+    current_user: User = Depends(get_current_user), 
+    db: Session = Depends(get_db)
+):
+    model = db.query(MLModel).filter(
+        MLModel.user_id == current_user.id, 
+        MLModel.model_name == model_name
+    ).first()
+    if not model:
+        raise HTTPException(status_code=404, detail="Model not found")
+    
+    recent_metrics = db.query(ModelMetrics).filter(
+        ModelMetrics.model_id == model.id
+    ).order_by(ModelMetrics.timestamp.desc()).limit(10).all()
+    
+    recent_drift = db.query(DriftDetection).filter(
+        DriftDetection.model_id == model.id
+    ).order_by(DriftDetection.timestamp.desc()).limit(5).all()
+    
+    return {
+        "model_info": {
+            "name": model.model_name,
+            "type": model.model_type,
+            "framework": model.framework,
+            "platform": model.deployment_platform,
+            "total_predictions": model.total_predictions,
+            "last_prediction": model.last_prediction,
+            "health_status": model.health_status
+        },
+        "recent_metrics": [
+            {
+                "timestamp": m.timestamp,
+                "accuracy": m.accuracy,
+                "precision": m.precision,
+                "recall": m.recall,
+                "f1_score": m.f1_score
+            } for m in recent_metrics
+        ],
+        "drift_status": [
+            {
+                "timestamp": d.timestamp,
+                "drift_detected": d.drift_detected,
+                "severity": d.drift_severity,
+                "score": d.drift_score
+            } for d in recent_drift
+        ]
+    }
+
+# Web Interface
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    if templates_dir.exists():
+        return templates.TemplateResponse("login.html", {"request": request})
+    return HTMLResponse("""
+    <html><head><title>ZipIt MLOps Login</title></head>
+    <body><h1>ZipIt MLOps Platform</h1>
+    <p>Use API at <a href="/docs">/docs</a></p></body></html>
+    """)
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    if templates_dir.exists():
+        return templates.TemplateResponse("dashboard.html", {"request": request})
+    return HTMLResponse("""
+    <html><head><title>ZipIt MLOps Dashboard</title></head>
+    <body><h1>ZipIt MLOps Dashboard</h1>
+    <p>Use API at <a href="/docs">/docs</a></p></body></html>
+    """)
 
 if __name__ == "__main__":
     import uvicorn
