@@ -8,6 +8,7 @@ mlops_platform.db
 # API Keys and secrets
 .env
 .env.local
+.env.example
 .env.production
 *api_key*
 *token*
