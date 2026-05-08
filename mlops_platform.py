@@ -160,7 +160,7 @@ class User(Base):
     full_name = Column(String)
     hashed_password = Column(String)
     api_key = Column(String, unique=True)
-    subscription_tier = Column(String, default="free")  # free, pro, enterprise
+    subscription_tier = Column(String, default="free-tier")  # free-tier, developers, elite-developers
     created_at = Column(DateTime, default=datetime.utcnow)
     last_login = Column(DateTime)
     is_active = Column(Boolean, default=True)
@@ -1405,7 +1405,7 @@ print('Ready to build ML models!')</textarea>
                         &nbsp;&nbsp;📄 data_preprocessing.py<br>
                         &nbsp;&nbsp;📄 train.py<br>
                         &nbsp;&nbsp;📂 models/<br>
-                        &nbsp;&nbsp;&nbsp;&nbsp;📄 fraud_detector.pkl<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;📄 model.pkl<br>
                     </div>
                 </div>
             </div>
