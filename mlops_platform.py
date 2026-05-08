@@ -145,7 +145,7 @@ class PredictionLog(Base):
 Base.metadata.create_all(bind=engine)
 
 # FastAPI app
-app = FastAPI(title="Open Source MLOps Monitoring Platform", version="1.0.0")
+app = FastAPI(title="ZipIt MLOps Platform", version="1.0.0")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
