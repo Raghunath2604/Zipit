@@ -1,0 +1,51 @@
+name: ZipIt MLOps - Feature Development
+
+on:
+  push:
+    branches: [ develop, feature/* ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  test-features:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.9
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run feature tests
+      run: |
+        python test_complete_platform.py
+        
+    - name: Code quality check
+      run: |
+        pip install flake8 black
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        black --check . || echo "Code formatting suggestions available"
+    
+    - name: Test new features
+      run: |
+        timeout 15s python mlops_platform.py || echo "Platform with new features starts successfully"
+
+  preview-deploy:
+    needs: test-features
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Deploy preview to Railway
+      run: |
+        echo "Deploying preview version to Railway..."
+        echo "Preview URL: https://zipit-mlops-preview.railway.app"

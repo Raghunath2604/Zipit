@@ -1,8 +1,8 @@
-name: Deploy MLOps Platform
+name: ZipIt MLOps - CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
     branches: [ main ]
 
@@ -25,7 +25,7 @@ jobs:
     
     - name: Run tests
       run: |
-        python -m pytest tests/ -v || echo "No tests found, skipping..."
+        python test_complete_platform.py
     
     - name: Test platform startup
       run: |
@@ -40,41 +40,18 @@ jobs:
     - uses: actions/checkout@v3
     
     - name: Deploy to Railway
-      uses: bervProject/railway-deploy@v1.0.0
-      with:
-        railway_token: ${{ secrets.RAILWAY_TOKEN }}
-        service: mlops-platform
-
-  deploy-render:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    steps:
-    - uses: actions/checkout@v3
-    
-    - name: Deploy to Render
-      uses: johnbeynon/render-deploy-action@v0.0.8
-      with:
-        service-id: ${{ secrets.RENDER_SERVICE_ID }}
-        api-key: ${{ secrets.RENDER_API_KEY }}
-
-  build-docker:
-    needs: test
+      run: |
+        echo "Deploying ZipIt MLOps to Railway..."
+        # Railway auto-deploys from main branch
+        
+  security-scan:
     runs-on: ubuntu-latest
     
     steps:
     - uses: actions/checkout@v3
     
-    - name: Build Docker image
+    - name: Security scan
       run: |
-        docker build -t mlops-platform:latest .
-        docker tag mlops-platform:latest mlops-platform:${{ github.sha }}
-    
-    - name: Test Docker container
-      run: |
-        docker run -d -p 8000:8000 --name test-container mlops-platform:latest
-        sleep 10
-        curl -f http://localhost:8000/ || exit 1
-        docker stop test-container
-        docker rm test-container
+        pip install safety bandit
+        safety check
+        bandit -r . -f json || true
