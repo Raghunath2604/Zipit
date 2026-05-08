@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZipIt Payment</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; }
+        .container { max-width: 600px; margin: 2rem auto; padding: 0 2rem; }
+        .payment-card { background: white; padding: 2rem; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .plan-summary { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+        .upi-section { background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%); padding: 2rem; border-radius: 10px; margin-bottom: 2rem; color: #333; }
+        .upi-id { font-size: 1.5rem; font-weight: bold; text-align: center; background: white; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+        .instructions { background: white; padding: 1rem; border-radius: 8px; margin-top: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500; }
+        .form-group input { width: 100%; padding: 0.75rem; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 1rem; }
+        .btn { width: 100%; padding: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ ZipIt Payment</h1>
+    </div>
+
+    <div class="container">
+        <div class="payment-card">
+            <div class="plan-summary">
+                <h2>Upgrade to {{ tier.title() }} Plan</h2>
+                <p><strong>Price:</strong> {{ price }}</p>
+                <p><strong>Duration:</strong> {% if tier == 'developer' %}3 months{% else %}12 months{% endif %}</p>
+            </div>
+
+            <div class="upi-section">
+                <h3>🇮🇳 UPI Payment (Recommended)</h3>
+                <div class="upi-id">8660735943@ybl</div>
+                
+                <div class="instructions">
+                    <h4>Payment Instructions:</h4>
+                    <ol>
+                        <li>Open any UPI app (GPay, PhonePe, Paytm)</li>
+                        <li>Send payment to: <strong>8660735943@ybl</strong></li>
+                        <li>Amount: <strong>₹{% if tier == 'developer' %}1245{% else %}4565{% endif %}</strong> ({{ price }} USD)</li>
+                        <li>Add note: <strong>{{ user.username }} - ZipIt {{ tier }}</strong></li>
+                        <li>Enter transaction ID below after payment</li>
+                    </ol>
+                </div>
+            </div>
+
+            <form method="post" action="/process_payment">
+                <input type="hidden" name="tier" value="{{ tier }}">
+                
+                <div class="form-group">
+                    <label>UPI Transaction ID</label>
+                    <input type="text" name="transaction_id" required placeholder="Enter 12-digit transaction ID">
+                </div>
+                
+                <button type="submit" class="btn">Verify Payment & Upgrade</button>
+            </form>
+
+            <div style="margin-top: 2rem; padding: 1rem; background: #e3f2fd; border-radius: 8px;">
+                <h4>💳 Other Payment Methods</h4>
+                <p>Credit Card, PayPal, and Bank Transfer options coming soon!</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZipIt Subscription</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a { color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.3s; }
+        .nav a:hover { background: rgba(255,255,255,0.2); }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+        .current-plan { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem; text-align: center; }
+        .pricing-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .pricing-card { background: white; border-radius: 15px; padding: 2rem; box-shadow: 0 5px 20px rgba(0,0,0,0.1); position: relative; transition: transform 0.3s; }
+        .pricing-card:hover { transform: translateY(-5px); }
+        .pricing-card.popular { border: 3px solid #667eea; }
+        .pricing-card.popular::before { content: 'POPULAR'; position: absolute; top: -10px; right: 20px; background: #667eea; color: white; padding: 5px 15px; border-radius: 15px; font-size: 0.8rem; }
+        .plan-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 1rem; }
+        .plan-price { font-size: 2.5rem; font-weight: bold; color: #667eea; margin-bottom: 0.5rem; }
+        .plan-duration { color: #666; margin-bottom: 2rem; }
+        .plan-features { list-style: none; margin-bottom: 2rem; }
+        .plan-features li { padding: 0.5rem 0; }
+        .plan-features li::before { content: '✅'; margin-right: 0.5rem; }
+        .btn { width: 100%; padding: 1rem; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; transition: background 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-current { background: #28a745; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>⚡ ZipIt Subscription</h1>
+        </div>
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/models">Models</a>
+            <a href="/subscription">Subscription</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="current-plan">
+            <h2>Current Plan: {{ user.tier.title() }} Tier</h2>
+            <p>{{ tier_limits[user.tier].models }} models | {{ tier_limits[user.tier].storage }} storage | {{ tier_limits[user.tier].price }}</p>
+        </div>
+
+        <div class="pricing-cards">
+            <div class="pricing-card">
+                <div class="plan-name">Free Tier</div>
+                <div class="plan-price">Free</div>
+                <div class="plan-duration">Forever</div>
+                <ul class="plan-features">
+                    <li>3 ML Models</li>
+                    <li>1 GB Storage</li>
+                    <li>Basic Dashboard</li>
+                    <li>Model Upload</li>
+                </ul>
+                {% if user.tier == 'free' %}
+                <button class="btn btn-current">Current Plan</button>
+                {% else %}
+                <button class="btn btn-secondary" disabled>Downgrade</button>
+                {% endif %}
+            </div>
+
+            <div class="pricing-card popular">
+                <div class="plan-name">Developer</div>
+                <div class="plan-price">$15</div>
+                <div class="plan-duration">3 months</div>
+                <ul class="plan-features">
+                    <li>15 ML Models</li>
+                    <li>25 GB Storage</li>
+                    <li>Advanced Monitoring</li>
+                    <li>API Access</li>
+                    <li>Email Support</li>
+                </ul>
+                {% if user.tier == 'developer' %}
+                <button class="btn btn-current">Current Plan</button>
+                {% else %}
+                <form method="post" action="/upgrade">
+                    <input type="hidden" name="tier" value="developer">
+                    <button type="submit" class="btn btn-primary">Upgrade to Developer</button>
+                </form>
+                {% endif %}
+            </div>
+
+            <div class="pricing-card">
+                <div class="plan-name">Elite Developer</div>
+                <div class="plan-price">$55</div>
+                <div class="plan-duration">12 months</div>
+                <ul class="plan-features">
+                    <li>100 ML Models</li>
+                    <li>500 GB Storage</li>
+                    <li>All Features</li>
+                    <li>Priority Support</li>
+                    <li>Custom Deployment</li>
+                    <li>White Label</li>
+                </ul>
+                {% if user.tier == 'elite' %}
+                <button class="btn btn-current">Current Plan</button>
+                {% else %}
+                <form method="post" action="/upgrade">
+                    <input type="hidden" name="tier" value="elite">
+                    <button type="submit" class="btn btn-primary">Upgrade to Elite</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

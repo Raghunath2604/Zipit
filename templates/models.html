@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZipIt Models</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f6fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .nav { display: flex; gap: 1rem; }
+        .nav a { color: white; text-decoration: none; padding: 0.5rem 1rem; border-radius: 5px; transition: background 0.3s; }
+        .nav a:hover { background: rgba(255,255,255,0.2); }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 2rem; }
+        .upload-form { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; color: #333; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 0.75rem; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 1rem; }
+        .btn { padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .models-list { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .model-card { border: 1px solid #e1e5e9; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+        .model-card h4 { color: #333; margin-bottom: 0.5rem; }
+        .model-meta { color: #666; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>⚡ ZipIt Models</h1>
+        </div>
+        <div class="nav">
+            <a href="/dashboard">Dashboard</a>
+            <a href="/models">Models</a>
+            <a href="/subscription">Subscription</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="upload-form">
+            <h2>Upload New Model</h2>
+            <p>Current: {{ models|length }}/{{ tier_limits.models }} models</p>
+            
+            <form method="post" action="/upload_model">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Model Name</label>
+                        <input type="text" name="model_name" required placeholder="my-awesome-model">
+                    </div>
+                    <div class="form-group">
+                        <label>Model Type</label>
+                        <select name="model_type" required>
+                            <option value="classification">Classification</option>
+                            <option value="regression">Regression</option>
+                            <option value="clustering">Clustering</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Framework</label>
+                        <select name="framework" required>
+                            <option value="scikit-learn">Scikit-learn</option>
+                            <option value="tensorflow">TensorFlow</option>
+                            <option value="pytorch">PyTorch</option>
+                            <option value="xgboost">XGBoost</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Model File</label>
+                        <input type="file" accept=".pkl,.joblib,.h5,.pt" disabled>
+                        <small style="color: #666;">File upload coming soon</small>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn">Upload Model</button>
+            </form>
+        </div>
+
+        <div class="models-list">
+            <h2>Your Models</h2>
+            
+            {% if models %}
+                {% for model in models %}
+                <div class="model-card">
+                    <h4>{{ model[2] }}</h4>
+                    <div class="model-meta">
+                        Type: {{ model[3] }} | Framework: {{ model[4] }} | Created: {{ model[5][:10] }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No models uploaded yet. Upload your first model above!</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

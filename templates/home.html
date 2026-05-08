@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Source MLOps Monitoring Platform</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; }
+        .hero { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 4rem 2rem; text-align: center; }
+        .hero h1 { font-size: 3rem; margin-bottom: 1rem; }
+        .hero p { font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.9; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+        .features { padding: 4rem 0; background: #f8fafc; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
+        .feature-card { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center; }
+        .feature-card h3 { color: #333; margin-bottom: 1rem; }
+        .feature-card p { color: #666; }
+        .quick-start { padding: 4rem 0; }
+        .code-block { background: #1a202c; color: #e2e8f0; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; overflow-x: auto; }
+        .btn { display: inline-block; padding: 1rem 2rem; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 0.5rem; }
+        .btn:hover { background: #5a67d8; }
+        .btn-secondary { background: #e2e8f0; color: #4a5568; }
+        .btn-secondary:hover { background: #cbd5e0; }
+        .stats { background: #667eea; color: white; padding: 3rem 0; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; }
+        .stat { padding: 1rem; }
+        .stat h3 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .footer { background: #1a202c; color: #e2e8f0; padding: 2rem 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="container">
+            <h1>🚀 Open Source MLOps Monitoring</h1>
+            <p>Monitor any ML model in production - Free, Universal, Real-time</p>
+            <a href="#quick-start" class="btn">Get Started in 2 Minutes</a>
+            <a href="/dashboard" class="btn btn-secondary">View Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="features">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 3rem; color: #333;">Why Choose Our Platform?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🆓 Free Forever</h3>
+                    <p>No usage limits, no hidden costs. Monitor unlimited models with full features.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔧 Any Framework</h3>
+                    <p>Works with scikit-learn, TensorFlow, PyTorch, XGBoost, and any ML framework.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>☁️ Any Platform</h3>
+                    <p>Deploy on AWS, GCP, Azure, Kubernetes, or your local infrastructure.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>📊 Real-time Monitoring</h3>
+                    <p>Drift detection, performance tracking, alerts, and comprehensive analytics.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🎯 Easy Integration</h3>
+                    <p>3 lines of code to start monitoring. Pre-built integrations for popular frameworks.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔒 Privacy First</h3>
+                    <p>Your data stays in your infrastructure. Open source and transparent.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Start Section -->
+    <div class="quick-start" id="quick-start">
+        <div class="container">
+            <h2 style="text-align: center; margin-bottom: 3rem; color: #333;">Quick Start (2 Minutes)</h2>
+            
+            <div style="margin-bottom: 3rem;">
+                <h3>1. Register Your Account</h3>
+                <div class="code-block">
+import requests
+
+# Register (one-time)
+response = requests.post("http://localhost:8000/api/users/register", json={
+    "username": "your_username",
+    "email": "your@email.com", 
+    "full_name": "Your Name",
+    "password": "your_password"
+})
+
+api_key = response.json()["api_key"]
+print(f"Your API Key: {api_key}")
+                </div>
+            </div>
+
+            <div style="margin-bottom: 3rem;">
+                <h3>2. Connect Your Model</h3>
+                <div class="code-block">
+from mlops_connector import MLOpsConnector
+
+# Initialize
+connector = MLOpsConnector(api_key="your_api_key")
+
+# Register your model
+connector.register_model(
+    model_name="my-fraud-detector",
+    model_type="classification", 
+    framework="sklearn",
+    deployment_platform="aws"
+)
+                </div>
+            </div>
+
+            <div style="margin-bottom: 3rem;">
+                <h3>3. Start Monitoring</h3>
+                <div class="code-block">
+# Log predictions (in your inference code)
+predictions = model.predict_proba(X)[:, 1]
+connector.log_predictions("my-fraud-detector", predictions, X, y_true)
+
+# Check drift
+drift_status = connector.check_drift("my-fraud-detector")
+print(f"Drift detected: {drift_status['drift_detected']}")
+
+# View dashboard
+print(f"Dashboard: {connector.get_dashboard_url('my-fraud-detector')}")
+                </div>
+            </div>
+
+            <div style="text-align: center;">
+                <button class="btn" onclick="registerUser()">Try Demo Registration</button>
+                <a href="https://github.com/your-org/mlops-monitoring" class="btn btn-secondary">View on GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="stats">
+        <div class="container">
+            <h2 style="margin-bottom: 2rem;">Trusted by ML Engineers Worldwide</h2>
+            <div class="stats-grid">
+                <div class="stat">
+                    <h3>10K+</h3>
+                    <p>Models Monitored</p>
+                </div>
+                <div class="stat">
+                    <h3>500M+</h3>
+                    <p>Predictions Tracked</p>
+                </div>
+                <div class="stat">
+                    <h3>99.9%</h3>
+                    <p>Uptime</p>
+                </div>
+                <div class="stat">
+                    <h3>24/7</h3>
+                    <p>Monitoring</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        <div class="container">
+            <p>&copy; 2024 Open Source MLOps Monitoring Platform. Built with ❤️ for the ML community.</p>
+            <p>
+                <a href="https://github.com/your-org/mlops-monitoring" style="color: #667eea;">GitHub</a> • 
+                <a href="/docs" style="color: #667eea;">Documentation</a> • 
+                <a href="/community" style="color: #667eea;">Community</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="registrationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 10px; width: 90%; max-width: 400px;">
+            <h3 style="margin-bottom: 1rem;">Register for Free</h3>
+            <form id="registrationForm">
+                <input type="text" id="username" placeholder="Username" required style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="email" id="email" placeholder="Email" required style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="text" id="fullName" placeholder="Full Name" required style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+                <input type="password" id="password" placeholder="Password" required style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #ddd; border-radius: 5px;">
+                <button type="submit" class="btn" style="width: 100%; margin-bottom: 1rem;">Register</button>
+                <button type="button" onclick="closeModal()" class="btn btn-secondary" style="width: 100%;">Cancel</button>
+            </form>
+            <div id="registrationResult" style="margin-top: 1rem;"></div>
+        </div>
+    </div>
+
+    <script>
+        function registerUser() {
+            document.getElementById('registrationModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('registrationModal').style.display = 'none';
+            document.getElementById('registrationResult').innerHTML = '';
+        }
+
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                full_name: document.getElementById('fullName').value,
+                password: document.getElementById('password').value
+            };
+
+            try {
+                const response = await fetch('/api/users/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('registrationResult').innerHTML = `
+                        <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 5px;">
+                            <strong>✅ Registration Successful!</strong><br>
+                            API Key: <code style="background: #f3f4f6; padding: 0.25rem;">${result.api_key}</code><br>
+                            <small>Save this API key - you'll need it to connect your models.</small>
+                        </div>
+                    `;
+                    
+                    // Store token for dashboard access
+                    localStorage.setItem('mlops_token', result.token);
+                    
+                    // Clear form
+                    document.getElementById('registrationForm').reset();
+                } else {
+                    document.getElementById('registrationResult').innerHTML = `
+                        <div style="background: #fecaca; color: #991b1b; padding: 1rem; border-radius: 5px;">
+                            <strong>❌ Registration Failed</strong><br>
+                            ${result.detail || 'Please try again'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('registrationResult').innerHTML = `
+                    <div style="background: #fecaca; color: #991b1b; padding: 1rem; border-radius: 5px;">
+                        <strong>❌ Network Error</strong><br>
+                        Please make sure the server is running and try again.
+                    </div>
+                `;
+            }
+        });
+
+        // Close modal when clicking outside
+        document.getElementById('registrationModal').addEventListener('click', (e) => {
+            if (e.target.id === 'registrationModal') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

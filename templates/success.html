@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZipIt Success</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .success-card { background: white; padding: 3rem; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); text-align: center; max-width: 500px; }
+        .success-icon { font-size: 4rem; margin-bottom: 1rem; }
+        .success-title { color: #28a745; font-size: 2rem; margin-bottom: 1rem; }
+        .success-message { color: #666; margin-bottom: 2rem; }
+        .btn { padding: 1rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="success-card">
+        <div class="success-icon">🎉</div>
+        <h1 class="success-title">Success!</h1>
+        <p class="success-message">{{ message }}</p>
+        <a href="/dashboard" class="btn">Go to Dashboard</a>
+    </div>
+</body>
+</html>

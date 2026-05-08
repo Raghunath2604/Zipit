@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Visualization - MLOps Platform</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.26.0/plotly.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1rem 2rem; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .model-info { background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+        .chart-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .full-width { grid-column: 1 / -1; }
+        .upload-section { background: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 0.5rem; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .status-active { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .file-upload { border: 2px dashed #ccc; padding: 2rem; text-align: center; border-radius: 10px; margin: 1rem 0; }
+        .file-upload.dragover { border-color: #667eea; background: #f0f4ff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Model Visualization</h1>
+        <p id="model-title">Loading model data...</p>
+    </div>
+
+    <div class="container">
+        <!-- Model Info -->
+        <div class="model-info">
+            <h3>Model Information</h3>
+            <div id="model-details"></div>
+        </div>
+
+        <!-- Upload & Deploy Section -->
+        <div class="upload-section">
+            <h3>Model Management</h3>
+            <div class="file-upload" id="file-upload">
+                <p>📁 Drag & drop your model file here or click to browse</p>
+                <input type="file" id="file-input" accept=".pkl,.joblib,.h5,.pt" style="display: none;">
+                <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">Choose File</button>
+            </div>
+            <div id="upload-status"></div>
+            <button class="btn btn-success" id="deploy-btn" onclick="deployModel()" disabled>Deploy Model</button>
+            <button class="btn btn-warning" id="test-btn" onclick="testModel()" disabled>Test Prediction</button>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>📈 Performance Metrics Over Time</h3>
+                <canvas id="metricsChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>🔍 Drift Detection Timeline</h3>
+                <canvas id="driftChart" width="400" height="300"></canvas>
+            </div>
+            <div class="chart-card full-width">
+                <h3>📊 Prediction Distribution</h3>
+                <div id="predictionPlot" style="height: 400px;"></div>
+            </div>
+            <div class="chart-card full-width">
+                <h3>🎯 Feature Importance (Latest Predictions)</h3>
+                <div id="featurePlot" style="height: 400px;"></div>
+            </div>
+        </div>
+
+        <!-- Test Prediction Modal -->
+        <div id="test-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000;">
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 10px; width: 500px;">
+                <h3>Test Model Prediction</h3>
+                <div id="feature-inputs"></div>
+                <button class="btn btn-primary" onclick="makePrediction()">Predict</button>
+                <button class="btn" onclick="closeTestModal()">Cancel</button>
+                <div id="prediction-result"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const modelName = new URLSearchParams(window.location.search).get('model') || 'default-model';
+        let apiToken = localStorage.getItem('mlops_token');
+        const API_BASE = window.location.origin + '/api';
+        const headers = {
+            'Authorization': `Bearer ${apiToken}`,
+            'Content-Type': 'application/json'
+        };
+
+        let modelData = null;
+
+        // Load model data
+        async function loadModelData() {
+            try {
+                const response = await fetch(`${API_BASE}/models/${modelName}/visualize`, { headers });
+                modelData = await response.json();
+                
+                document.getElementById('model-title').textContent = `Model: ${modelData.model_info.name}`;
+                
+                // Update model details
+                document.getElementById('model-details').innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div><strong>Type:</strong> ${modelData.model_info.type}</div>
+                        <div><strong>Framework:</strong> ${modelData.model_info.framework}</div>
+                        <div><strong>Predictions:</strong> ${modelData.predictions.length}</div>
+                        <div><strong>Status:</strong> <span class="status-badge status-active">Active</span></div>
+                    </div>
+                `;
+                
+                // Create visualizations
+                createMetricsChart();
+                createDriftChart();
+                createPredictionDistribution();
+                createFeatureImportance();
+                
+            } catch (error) {
+                console.error('Error loading model data:', error);
+                document.getElementById('model-title').textContent = 'Error loading model data';
+            }
+        }
+
+        // File upload handling
+        document.getElementById('file-input').addEventListener('change', handleFileUpload);
+        
+        const fileUpload = document.getElementById('file-upload');
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('dragover');
+        });
+        
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('dragover');
+        });
+        
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFile(files[0]);
+            }
+        });
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                await uploadFile(file);
+            }
+        }
+
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            try {
+                document.getElementById('upload-status').innerHTML = '⏳ Uploading...';
+                
+                const response = await fetch(`${API_BASE}/models/${modelName}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiToken}` },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('upload-status').innerHTML = '✅ File uploaded successfully!';
+                    document.getElementById('deploy-btn').disabled = false;
+                } else {
+                    document.getElementById('upload-status').innerHTML = `❌ Upload failed: ${result.detail}`;
+                }
+            } catch (error) {
+                document.getElementById('upload-status').innerHTML = `❌ Upload error: ${error.message}`;
+            }
+        }
+
+        async function deployModel() {
+            try {
+                const response = await fetch(`${API_BASE}/models/${modelName}/deploy`, {
+                    method: 'POST',
+                    headers
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('upload-status').innerHTML = '🚀 Model deployed successfully!';
+                    document.getElementById('test-btn').disabled = false;
+                } else {
+                    document.getElementById('upload-status').innerHTML = `❌ Deployment failed: ${result.detail}`;
+                }
+            } catch (error) {
+                document.getElementById('upload-status').innerHTML = `❌ Deployment error: ${error.message}`;
+            }
+        }
+
+        function testModel() {
+            // Show test modal with feature inputs
+            document.getElementById('feature-inputs').innerHTML = `
+                <div style="margin: 1rem 0;">
+                    <label>Feature 1:</label>
+                    <input type="number" id="feature1" step="0.01" style="width: 100%; padding: 0.5rem; margin: 0.25rem 0;">
+                </div>
+                <div style="margin: 1rem 0;">
+                    <label>Feature 2:</label>
+                    <input type="number" id="feature2" step="0.01" style="width: 100%; padding: 0.5rem; margin: 0.25rem 0;">
+                </div>
+                <div style="margin: 1rem 0;">
+                    <label>Feature 3:</label>
+                    <input type="number" id="feature3" step="0.01" style="width: 100%; padding: 0.5rem; margin: 0.25rem 0;">
+                </div>
+            `;
+            document.getElementById('test-modal').style.display = 'block';
+        }
+
+        async function makePrediction() {
+            const features = {
+                feature1: parseFloat(document.getElementById('feature1').value) || 0,
+                feature2: parseFloat(document.getElementById('feature2').value) || 0,
+                feature3: parseFloat(document.getElementById('feature3').value) || 0
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/models/${modelName}/predict`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(features)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('prediction-result').innerHTML = `
+                        <div style="margin-top: 1rem; padding: 1rem; background: #f0f9ff; border-radius: 5px;">
+                            <strong>Prediction:</strong> ${result.prediction.toFixed(4)}<br>
+                            <strong>Timestamp:</strong> ${result.timestamp}
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('prediction-result').innerHTML = `
+                        <div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border-radius: 5px; color: red;">
+                            Error: ${result.detail}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('prediction-result').innerHTML = `
+                    <div style="margin-top: 1rem; padding: 1rem; background: #fef2f2; border-radius: 5px; color: red;">
+                        Error: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function closeTestModal() {
+            document.getElementById('test-modal').style.display = 'none';
+        }
+
+        function createMetricsChart() {
+            if (!modelData.metrics_timeline.length) return;
+            
+            const ctx = document.getElementById('metricsChart').getContext('2d');
+            const labels = modelData.metrics_timeline.map(m => new Date(m.timestamp).toLocaleDateString());
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: 'Accuracy',
+                        data: modelData.metrics_timeline.map(m => m.accuracy).reverse(),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Precision',
+                        data: modelData.metrics_timeline.map(m => m.precision).reverse(),
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4
+                    }, {
+                        label: 'Recall',
+                        data: modelData.metrics_timeline.map(m => m.recall).reverse(),
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { beginAtZero: false, min: 0, max: 1 }
+                    }
+                }
+            });
+        }
+
+        function createDriftChart() {
+            if (!modelData.drift_timeline.length) return;
+            
+            const ctx = document.getElementById('driftChart').getContext('2d');
+            const labels = modelData.drift_timeline.map(d => new Date(d.timestamp).toLocaleDateString());
+            
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels.reverse(),
+                    datasets: [{
+                        label: 'Drift Score',
+                        data: modelData.drift_timeline.map(d => d.drift_score).reverse(),
+                        backgroundColor: modelData.drift_timeline.map(d => 
+                            d.drift_detected ? '#ef4444' : '#10b981'
+                        ).reverse()
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function createPredictionDistribution() {
+            if (!modelData.predictions.length) return;
+            
+            const predictions = modelData.predictions.map(p => p.prediction);
+            
+            const trace = {
+                x: predictions,
+                type: 'histogram',
+                marker: { color: '#667eea' },
+                name: 'Predictions'
+            };
+            
+            const layout = {
+                title: 'Distribution of Predictions',
+                xaxis: { title: 'Prediction Value' },
+                yaxis: { title: 'Frequency' }
+            };
+            
+            Plotly.newPlot('predictionPlot', [trace], layout);
+        }
+
+        function createFeatureImportance() {
+            // Mock feature importance data
+            const features = ['Feature 1', 'Feature 2', 'Feature 3', 'Feature 4', 'Feature 5'];
+            const importance = [0.35, 0.28, 0.18, 0.12, 0.07];
+            
+            const trace = {
+                x: importance,
+                y: features,
+                type: 'bar',
+                orientation: 'h',
+                marker: { color: '#667eea' }
+            };
+            
+            const layout = {
+                title: 'Feature Importance',
+                xaxis: { title: 'Importance Score' },
+                yaxis: { title: 'Features' }
+            };
+            
+            Plotly.newPlot('featurePlot', [trace], layout);
+        }
+
+        // Load data on page load
+        loadModelData();
+    </script>
+</body>
+</html>
