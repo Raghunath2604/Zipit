@@ -463,9 +463,9 @@ class UserLogin(BaseModel):
 
 class ModelRegister(BaseModel):
     model_name: str = Field(..., min_length=1, max_length=100)
-    model_type: str = Field(..., regex="^(classification|regression|clustering|nlp|cv)$")
-    framework: str = Field(..., regex="^(sklearn|tensorflow|pytorch|xgboost|lightgbm|catboost|custom)$")
-    deployment_platform: str = Field(..., regex="^(aws|gcp|azure|kubernetes|local|edge)$")
+    model_type: str = Field(..., pattern="^(classification|regression|clustering|nlp|cv)$")
+    framework: str = Field(..., pattern="^(sklearn|tensorflow|pytorch|xgboost|lightgbm|catboost|custom)$")
+    deployment_platform: str = Field(..., pattern="^(aws|gcp|azure|kubernetes|local|edge)$")
     description: Optional[str] = None
     tags: Optional[List[str]] = []
     input_schema: Optional[Dict[str, Any]] = None
@@ -481,7 +481,7 @@ class PredictionData(BaseModel):
 class ExperimentCreate(BaseModel):
     experiment_name: str
     model_id: int
-    experiment_type: str = Field(..., regex="^(ab_test|champion_challenger|canary)$")
+    experiment_type: str = Field(..., pattern="^(ab_test|champion_challenger|canary)$")
     description: Optional[str] = None
     traffic_split: Dict[str, float]
     success_metrics: List[str]
@@ -489,7 +489,7 @@ class ExperimentCreate(BaseModel):
 class AlertCreate(BaseModel):
     model_id: int
     alert_type: str
-    severity: str = Field(..., regex="^(low|medium|high|critical)$")
+    severity: str = Field(..., pattern="^(low|medium|high|critical)$")
     title: str
     message: str
     notification_channels: Optional[List[str]] = []

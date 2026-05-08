@@ -1,95 +1,158 @@
 version: '3.8'
 
 services:
+  # MLOps Platform Application
+  mlops-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+      args:
+        BUILD_DATE: ${BUILD_DATE:-$(date -u +'%Y-%m-%dT%H:%M:%SZ')}
+        VERSION: ${VERSION:-2.0.0}
+        VCS_REF: ${VCS_REF:-$(git rev-parse HEAD)}
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://mlops:mlops123@postgres:5432/mlops_db
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-zipit-mlops-secret-key}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./models:/app/models
+      - ./logs:/app/logs
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: zipit_postgres
     environment:
-      POSTGRES_DB: zipit_db
-      POSTGRES_USER: zipit_user
-      POSTGRES_PASSWORD: zipit_pass
+      POSTGRES_DB: mlops_db
+      POSTGRES_USER: mlops
+      POSTGRES_PASSWORD: mlops123
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
     networks:
-      - zipit_network
+      - mlops-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlops -d mlops_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Redis for caching and sessions
+  # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: zipit_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     networks:
-      - zipit_network
+      - mlops-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
-  # Main Application
-  app:
-    build: 
-      context: .
-      dockerfile: docker/Dockerfile.app
-    container_name: zipit_app
-    environment:
-      - DATABASE_URL=postgresql://zipit_user:zipit_pass@postgres:5432/zipit_db
-      - REDIS_URL=redis://redis:6379
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
     ports:
-      - "8501:8501"
+      - "9090:9090"
     volumes:
-      - ./data:/app/data
-      - ./models:/app/models
-    depends_on:
-      - postgres
-      - redis
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
     networks:
-      - zipit_network
+      - mlops-network
     restart: unless-stopped
 
-  # API Service
-  api:
-    build:
-      context: .
-      dockerfile: docker/Dockerfile.api
-    container_name: zipit_api
-    environment:
-      - DATABASE_URL=postgresql://zipit_user:zipit_pass@postgres:5432/zipit_db
-      - REDIS_URL=redis://redis:6379
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
     ports:
-      - "8000:8000"
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - mlops-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # MLflow Tracking Server
+  mlflow:
+    image: python:3.9-slim
+    ports:
+      - "5000:5000"
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlops:mlops123@postgres:5432/mlflow_db
+      - MLFLOW_DEFAULT_ARTIFACT_ROOT=/mlflow/artifacts
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+    command: >
+      bash -c "
+        pip install mlflow psycopg2-binary &&
+        mlflow server 
+        --backend-store-uri postgresql://mlops:mlops123@postgres:5432/mlflow_db
+        --default-artifact-root /mlflow/artifacts
+        --host 0.0.0.0
+        --port 5000
+      "
+    networks:
+      - mlops-network
+    restart: unless-stopped
     depends_on:
       - postgres
-      - redis
-    networks:
-      - zipit_network
-    restart: unless-stopped
 
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
-    container_name: zipit_nginx
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/mlops-platform.conf:/etc/nginx/conf.d/default.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - app
-      - api
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
     networks:
-      - zipit_network
+      - mlops-network
     restart: unless-stopped
+    depends_on:
+      - mlops-platform
 
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:
+  mlflow_artifacts:
 
 networks:
-  zipit_network:
+  mlops-network:
     driver: bridge
